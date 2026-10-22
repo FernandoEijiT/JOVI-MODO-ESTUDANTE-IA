@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Chaves e configurações locais (NUNCA subir para o GitHub)
+.env
+
+# Arquivos gerados pelo programa
+arquivos/imagens/*
+arquivos/pdf/*
+arquivos/dados/*
+!arquivos/imagens/.gitkeep
+!arquivos/pdf/.gitkeep
+!arquivos/dados/.gitkeep
+
+# Editor / sistema
+.vscode/
+.idea/
+.DS_Store
