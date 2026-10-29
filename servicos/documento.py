@@ -1,11 +1,12 @@
 import re
-
 from servicos.captura import ServicoCaptura
 
-
 class ServicoDocumento:
-    """Tenta descobrir se um texto parece um documento, procurando palavras-chave."""
+    """Tenta descobrir se um texto parece material de estudo ou um documento,
+    procurando palavras-chave.
+    """
 
+    # A palavra do texto precisa começar com uma destas.
     PALAVRAS_CHAVE = (
         "titulo",
         "capitulo",
@@ -17,19 +18,32 @@ class ServicoDocumento:
         "referencia",
     )
 
-    # \b no início: a palavra precisa COMEÇAR com a palavra-chave, então
-    # "titulos", "capitulo3" e "introducoes" disparam, mas "subtitulo" e
-    # "preferencia" não.
-    _PADRAO = re.compile(r"\b(?:" + "|".join(PALAVRAS_CHAVE) + r")")
+    # Estas precisam aparecer inteiras.
+    PALAVRAS_ESTUDO = (
+        "aula", "aulas",
+        "materia", "materias",
+        "exercicio", "exercicios",
+        "conceito", "conceitos",
+        "definicao", "definicoes",
+        "teorema", "teoremas",
+        "formula", "formulas",
+        "prova", "provas",
+        "disciplina", "disciplinas",
+        "estudo", "estudos",
+        "licao", "licoes",
+        "apostila", "apostilas",
+        "questao", "questoes",
+    )
+
+    _PADRAO = re.compile(
+        r"\b(?:" + "|".join(PALAVRAS_CHAVE) + r")"
+        r"|\b(?:" + "|".join(PALAVRAS_ESTUDO) + r")\b"
+    )
 
     @staticmethod
     def detectar_documento(texto):
-        """Procura no texto palavras como título, capítulo, introdução, resumo,
-        conclusão e referência.
-
-        Ignora maiúsculas e acentos, e a palavra do texto precisa começar com a
-        palavra-chave (então "títulos" vale, mas "subtítulo" não). Devolve True
-        se achar alguma e False se não achar ou se o texto for vazio.
+        """Devolve True se o texto tiver alguma palavra de documento ou de estudo
+        (título, capítulo, resumo, aula, prova, conceito...).
         """
         if not texto:
             return False

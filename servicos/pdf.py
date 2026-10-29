@@ -7,41 +7,26 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 from configuracao import PASTA_PDFS
 
 class ServicoPDF:
+    """Gera os PDFs com título, resumo e conteúdo original."""
 
-    """Gera os arquivos PDF, com título, resumo e conteúdo original."""
     @staticmethod
     def _paragrafos(texto, estilo):
-
-        """Quebra o texto em blocos (separados por linha em branco) e transforma
-        cada um em um parágrafo do ReportLab, usando o estilo recebido. Devolve
-        a lista de parágrafos.
-        """
         blocos = [
             bloco.strip()
             for bloco in texto.replace("\r", "").split("\n\n")
             if bloco.strip()
         ]
 
+        # escape() impede que <, > e & sejam lidos como marcação pelo ReportLab
         return [
-            # escape() evita que caracteres como <, > e & sejam
-            # interpretados como marcação pelo ReportLab
             Paragraph(escape(bloco).replace("\n", "<br/>"), estilo)
             for bloco in blocos
         ]
 
     @staticmethod
-    def gerar_pdf(
-        nome_arquivo,
-        titulo,
-        texto,
-        resumo
-    ):
-
-        """Cria o PDF na pasta de PDFs com o título, o resumo (se não estiver
-        vazio) e o conteúdo original.
-
-        Recebe o nome do arquivo (como "conteudo_1.pdf"), o título, o texto e o
-        resumo. Devolve o caminho do arquivo criado.
+    def gerar_pdf(nome_arquivo, titulo, texto, resumo):
+        """Cria o PDF na pasta de PDFs e devolve o caminho do arquivo. Levanta
+        RuntimeError se o ReportLab não conseguir montar o documento.
         """
         PASTA_PDFS.mkdir(parents=True, exist_ok=True)
 
@@ -77,18 +62,17 @@ class ServicoPDF:
         ]
 
         if resumo and resumo.strip():
-
             elementos.append(Paragraph("Resumo", estilo_secao))
-            elementos.extend(
-                ServicoPDF._paragrafos(resumo, estilo_corpo)
-            )
+            elementos.extend(ServicoPDF._paragrafos(resumo, estilo_corpo))
             elementos.append(Spacer(1, 12))
 
         elementos.append(Paragraph("Conteúdo original", estilo_secao))
-        elementos.extend(
-            ServicoPDF._paragrafos(texto, estilo_corpo)
-        )
+        elementos.extend(ServicoPDF._paragrafos(texto, estilo_corpo))
 
-        documento.build(elementos)
+        try:
+            documento.build(elementos)
+
+        except Exception as erro:
+            raise RuntimeError(f"Não foi possível montar o PDF: {erro}") from None
 
         return str(caminho)

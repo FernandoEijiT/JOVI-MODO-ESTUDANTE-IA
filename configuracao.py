@@ -1,16 +1,9 @@
-"""
-Configurações centrais do projeto.
-Concentrar pastas, extensões e nomes de modelos aqui evita repetir
-esses valores em vários arquivos (e evita divergências como usar
-"pdf" em um lugar e "pdfs" em outro).
-"""
 import os
 from pathlib import Path
 
 try:
-    # Lê as variáveis do arquivo .env (se existir), como a chave da API.
-    # Se o python-dotenv não estiver instalado, o programa continua
-    # funcionando com as variáveis de ambiente do sistema.
+    # Lê o arquivo .env (chave da API, etc.). Sem o python-dotenv, usa só as
+    # variáveis de ambiente do sistema.
     from dotenv import load_dotenv
 
     load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -18,36 +11,48 @@ try:
 except ImportError:
     pass
 
-# Pastas (sempre relativas à raiz do projeto, e não à pasta onde
-# o programa foi executado)
+# Pastas
 PASTA_BASE = Path(__file__).resolve().parent
 PASTA_ARQUIVOS = PASTA_BASE / "arquivos"
 PASTA_IMAGENS = PASTA_ARQUIVOS / "imagens"
 PASTA_PDFS = PASTA_ARQUIVOS / "pdf"
 PASTA_DADOS = PASTA_ARQUIVOS / "dados"
 
-# Arquivo JSON onde os conteúdos e PDFs ficam salvos entre execuções
+# Onde os conteúdos e PDFs ficam salvos entre execuções
 ARQUIVO_DADOS = PASTA_DADOS / "conteudos.json"
 
-# Extensões de imagem aceitas pelo sistema
 EXTENSOES_IMAGEM = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
-# Modelo usado para gerar resumos. Pode ser trocado sem mexer no código:
-#   Windows (PowerShell):  $env:JOVI_MODELO_RESUMO = "outro/modelo"
-MODELO_RESUMO = os.getenv("JOVI_MODELO_RESUMO", "facebook/bart-large-cnn")
+# ---------------------------------------------------------------
+# Resumo
+# ---------------------------------------------------------------
+
+# "transformers" -> modelo de IA (precisa baixar o modelo na primeira vez)
+# "simples"      -> resumo por frases, leve e sem baixar nada
+# Se o modelo não carregar, o programa usa o simples automaticamente.
+RESUMO_PROVEDOR = os.getenv("JOVI_RESUMO", "transformers").strip().lower()
+
+# Modelo treinado para resumir textos em português
+MODELO_RESUMO = os.getenv("JOVI_MODELO_RESUMO", "recogna-nlp/ptt5-base-summ")
+
+# O PTT5 usa o tokenizador de outro repositório; nos demais modelos é o próprio
+TOKENIZADOR_RESUMO = os.getenv(
+    "JOVI_TOKENIZADOR_RESUMO",
+    "unicamp-dl/ptt5-base-portuguese-vocab"
+    if MODELO_RESUMO == "recogna-nlp/ptt5-base-summ"
+    else MODELO_RESUMO,
+)
 
 # ---------------------------------------------------------------
 # OCR
 # ---------------------------------------------------------------
 
-# Idioma do OCR: "por" = português (vale para a API e para o Tesseract)
+# "por" = português (vale para a API e para o Tesseract)
 IDIOMA_OCR = "por"
 
-# Qual OCR usar:
-#   "ocrspace"  -> API externa OCR.space (padrão). Se a API falhar ou a
-#                  chave não estiver configurada, usa o Tesseract local.
-#   "tesseract" -> somente o Tesseract instalado no computador (offline).
+# "ocrspace"  -> API externa OCR.space (padrão), com Tesseract como alternativa
+# "tesseract" -> somente o Tesseract local (offline)
 OCR_PROVEDOR = os.getenv("JOVI_OCR", "ocrspace").strip().lower()
 
-# Chave da API do OCR.space (NUNCA escreva a chave direto no código)
+# Chave da API (fica no .env, nunca no código)
 OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "").strip()

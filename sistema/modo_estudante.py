@@ -1,5 +1,4 @@
 import os
-
 from configuracao import OCR_PROVEDOR, PASTA_IMAGENS
 from modelos.conteudo import Conteudo
 from modelos.pdf import PDF
@@ -14,18 +13,13 @@ from servicos.resumo import ServicoResumo
 
 TITULO_PDF = "Modo Estudante - JOVI"
 
-
 class ModoEstudante:
     """Controla o menu e o fluxo principal do Modo Estudante."""
 
     def __init__(self):
-        """Prepara os serviços (resumo e OCR) e carrega os dados salvos na última
-        execução, se houver.
-        """
         self._conteudos = []
         self._pdfs = []
         self._servico_resumo = ServicoResumo()
-        # OCR local (Tesseract) e, opcionalmente, a API externa OCR.space
         self._servico_ocr = ServicoOCR()
         self._servico_ocr_api = (
             ServicoOCRSpace() if OCR_PROVEDOR == "ocrspace" else None
@@ -34,14 +28,9 @@ class ModoEstudante:
 
         self._carregar_dados()
 
-    # ------------------------------------------------------------------
-    # Persistência
-    # ------------------------------------------------------------------
-
     def _carregar_dados(self):
-        """Lê o JSON salvo e ajusta o próximo id para não repetir os que já foram
-        usados. Se o arquivo estiver inválido ou não puder ser lido, mostra um
-        aviso e começa vazio.
+        """Lê o JSON da última sessão e ajusta o próximo id. Se o arquivo estiver
+        inválido, avisa e começa vazio.
         """
         try:
             self._conteudos, self._pdfs = ServicoArmazenamento.carregar()
@@ -62,21 +51,13 @@ class ModoEstudante:
             )
 
     def _salvar_dados(self):
-        """Grava o estado atual no JSON. Se não conseguir, apenas avisa o usuário e
-        o programa continua.
-        """
         try:
             ServicoArmazenamento.salvar(self._conteudos, self._pdfs)
 
         except RuntimeError as erro:
             print(f"\n⚠️ {erro}")
 
-    # ------------------------------------------------------------------
-    # Menu e entradas
-    # ------------------------------------------------------------------
-
     def exibir_menu(self):
-        """Mostra o menu e devolve a opção digitada, sem espaços nas pontas."""
         print("\n====================================")
         print("        MODO ESTUDANTE - JOVI")
         print("====================================")
@@ -89,16 +70,14 @@ class ModoEstudante:
         print("6 - Processar imagem / OCR")
         print("7 - Gerar PDF")
         print("8 - Ver PDFs gerados")
-        print("9 - Sobre o projeto")
+        print("9 - Ver conteúdos do Modo Estudante")
+        print("10 - Sobre o projeto")
         print("0 - Sair")
 
         return input("\nEscolha uma opção: ").strip()
 
     @staticmethod
     def _perguntar_sim_nao(pergunta):
-        """Faz a pergunta e repete até a pessoa responder sim ou não. Devolve True
-        para sim e False para não.
-        """
         while True:
             resposta = input(f"\n{pergunta} (sim/não): ").lower().strip()
 
@@ -111,9 +90,7 @@ class ModoEstudante:
             print("\n⚠️ Resposta inválida. Digite sim ou não.")
 
     def _novo_conteudo(self, texto):
-        """Cria um Conteudo com o próximo id livre e avança o contador. O conteúdo
-        ainda não entra na lista; quem chamou é que faz isso.
-        """
+        # Só cria o objeto; quem chamou é que coloca na lista
         conteudo = Conteudo(self._proximo_id, texto)
 
         self._proximo_id += 1
@@ -121,9 +98,8 @@ class ModoEstudante:
         return conteudo
 
     def _selecionar_conteudo(self):
-        """Pede um id ao usuário e devolve o conteúdo correspondente. Devolve None
-        (e avisa o motivo) se a lista estiver vazia, se o que foi digitado não
-        for um número ou se não existir conteúdo com esse id.
+        """Pede um id e devolve o conteúdo. Devolve None se a
+        lista estiver vazia, o id não for número ou não existir.
         """
         if not self._conteudos:
             print("\n⚠️ Nenhum conteúdo salvo.")
@@ -137,7 +113,6 @@ class ModoEstudante:
             return None
 
         for conteudo in self._conteudos:
-
             if conteudo.id == id_conteudo:
                 return conteudo
 
@@ -145,14 +120,9 @@ class ModoEstudante:
 
         return None
 
-    # ------------------------------------------------------------------
-    # Serviços auxiliares
-    # ------------------------------------------------------------------
-
     def _extrair_texto(self, caminho_imagem):
         """Lê o texto da imagem pela API OCR.space e, se ela falhar, usa o
-        Tesseract local. Recebe o caminho da imagem já melhorada e devolve o
-        texto reconhecido.
+        Tesseract local.
         """
         if self._servico_ocr_api is not None:
 
@@ -171,9 +141,6 @@ class ModoEstudante:
         return self._servico_ocr.extrair_texto(caminho_imagem)
 
     def _gerar_resumo(self, conteudo, texto):
-        """Gera o resumo do texto e guarda no conteúdo. Se o resumo falhar por
-        qualquer motivo, mostra o aviso e deixa o resumo vazio.
-        """
         try:
             resumo = self._servico_resumo.gerar_resumo(texto)
 
@@ -183,42 +150,52 @@ class ModoEstudante:
 
         conteudo.definir_resumo(resumo)
 
-    def _oferecer_modo_estudante(self, conteudo, texto):
-        """Pergunta se o usuário quer ativar o Modo Estudante para o conteúdo
-        recém-criado. A pergunta aparece sempre; se o texto parecer um
-        documento, um aviso é mostrado antes. Devolve True se o modo foi
-        ativado.
+    def _aplicar_modo_estudante(self, conteudo, texto):
+        """Se o texto parecer um documento ou material de estudo, ativa o Modo
+        Estudante sozinho. Caso contrário, pergunta ao usuário.
         """
         if ServicoDocumento.detectar_documento(texto):
             print("\n📄 Possível documento detectado!")
-
-        if self.ativar_modo_estudante():
+            print("\n🚀 Modo Estudante ativado automaticamente!")
             conteudo.ativar_modo_estudante()
-            return True
+            return
 
-        return False
+        if self._perguntar_sim_nao("Ativar Modo Estudante?"):
+            print("\n🚀 Modo Estudante ativado!")
+            conteudo.ativar_modo_estudante()
+        else:
+            print("\nModo Estudante não foi ativado.")
 
     def _pdfs_do_conteudo(self, conteudo):
-        """Devolve a lista de PDFs já gerados a partir do conteúdo."""
-        return [
-            pdf for pdf in self._pdfs if pdf.id_conteudo == conteudo.id
-        ]
+        return [pdf for pdf in self._pdfs if pdf.id_conteudo == conteudo.id]
+
+    @staticmethod
+    def _titulo_pdf(conteudo):
+        # Usa a primeira linha do texto se ela for curta; senão, um título padrão
+        for linha in conteudo.texto_principal.splitlines():
+            linha = linha.strip()
+
+            if linha:
+                if len(linha) <= 60:
+                    return linha
+                break
+
+        return f"{TITULO_PDF} - Conteúdo {conteudo.id}"
 
     def _exportar_pdf(self, conteudo):
-        """Gera o PDF do conteúdo (com o texto principal e o resumo), registra o
-        arquivo e salva os dados. Se o PDF já existia, o arquivo é sobrescrito e
-        o registro não é duplicado. Devolve o caminho do PDF.
+        """Gera o PDF do conteúdo, registra o arquivo e salva os dados. Gerar de
+        novo sobrescreve o arquivo sem duplicar o registro. Devolve o caminho
+        do PDF.
         """
         origem = conteudo.imagem or conteudo.texto
 
         caminho = ServicoPDF.gerar_pdf(
             f"conteudo_{conteudo.id}.pdf",
-            TITULO_PDF,
+            self._titulo_pdf(conteudo),
             conteudo.texto_principal,
             conteudo.resumo
         )
 
-        # Gerar o PDF do mesmo conteúdo de novo não duplica o registro
         if not any(pdf.nome == caminho for pdf in self._pdfs):
             self._pdfs.append(PDF(caminho, origem, conteudo.id))
 
@@ -226,26 +203,9 @@ class ModoEstudante:
 
         return caminho
 
-    # ------------------------------------------------------------------
-    # Funcionalidades do menu
-    # ------------------------------------------------------------------
-
-    def ativar_modo_estudante(self):
-        """Pergunta se o usuário quer ativar o Modo Estudante. Devolve True se ele
-        confirmou.
-        """
-        if self._perguntar_sim_nao("Ativar Modo Estudante?"):
-            print("\n🚀 Modo Estudante ativado!")
-            return True
-
-        print("\nModo Estudante não foi ativado.")
-
-        return False
-
     def capturar_conteudo(self):
-        """Pede um texto ou o caminho de uma imagem. Se for imagem, segue para o
-        processamento; se for texto, gera o resumo, pergunta sobre o Modo
-        Estudante e salva.
+        """Pede um texto ou o caminho de uma imagem. Imagem segue para o OCR;
+        texto ganha resumo, Modo Estudante e é salvo.
         """
         entrada = input(
             "\nDigite o conteúdo ou caminho da imagem: "
@@ -255,18 +215,16 @@ class ModoEstudante:
             print("\n⚠️ Conteúdo inválido!")
             return
 
-        # Verifica se é uma imagem
         caminho = ServicoCaptura.limpar_caminho(entrada)
 
         if ServicoCaptura.eh_imagem(caminho):
             self._processar_caminho(caminho)
             return
 
-        # Conteúdo de texto
         conteudo = self._novo_conteudo(entrada)
 
         self._gerar_resumo(conteudo, entrada)
-        self._oferecer_modo_estudante(conteudo, entrada)
+        self._aplicar_modo_estudante(conteudo, entrada)
 
         self._conteudos.append(conteudo)
         self._salvar_dados()
@@ -276,9 +234,6 @@ class ModoEstudante:
         print(f"Resumo: {conteudo.resumo}")
 
     def solicitar_imagem(self):
-        """Pede o caminho de uma imagem e a processa. Recusa caminho vazio e
-        arquivos que não tenham uma extensão de imagem aceita.
-        """
         caminho = ServicoCaptura.limpar_caminho(
             input("\nDigite o caminho da imagem: ")
         )
@@ -295,9 +250,6 @@ class ModoEstudante:
         self._processar_caminho(caminho)
 
     def _processar_caminho(self, caminho):
-        """Recebe o caminho da imagem, confere se o arquivo existe e, se existir,
-        manda processar.
-        """
         if not os.path.exists(caminho):
             print("\n⚠️ A imagem não foi encontrada.")
             return
@@ -305,12 +257,9 @@ class ModoEstudante:
         self.processar_imagem(caminho)
 
     def processar_imagem(self, caminho_imagem):
-        """Faz o fluxo completo da imagem: melhora a imagem, extrai o texto por
-        OCR, gera o resumo, pergunta sobre o Modo Estudante, salva e oferece
-        gerar o PDF.
-
-        Recebe o caminho de uma imagem que já existe. Erros de arquivo, OCR ou
-        gravação aparecem na tela em vez de derrubar o programa.
+        """Fluxo completo da imagem: melhora com OpenCV, extrai o texto por OCR,
+        gera o resumo, aplica o Modo Estudante, salva e oferece o PDF. Erros de
+        arquivo, OCR ou gravação aparecem na tela sem derrubar o programa.
         """
         print("\n🖼️ Processando imagem...")
 
@@ -321,16 +270,10 @@ class ModoEstudante:
         caminho_melhorado = PASTA_IMAGENS / f"{nome_sem_extensao}_melhorada.png"
 
         try:
-
-            # Melhora a imagem
-            ServicoImagem.melhorar_imagem(
-                caminho_imagem,
-                caminho_melhorado
-            )
+            ServicoImagem.melhorar_imagem(caminho_imagem, caminho_melhorado)
 
             print("✅ Imagem melhorada com OpenCV.")
 
-            # OCR
             texto_extraido = self._extrair_texto(caminho_melhorado)
 
             if not texto_extraido:
@@ -340,13 +283,12 @@ class ModoEstudante:
             print("\n===== TEXTO EXTRAÍDO =====")
             print(texto_extraido)
 
-            # Cria o conteúdo
             conteudo = self._novo_conteudo(caminho_imagem)
             conteudo.definir_imagem(caminho_imagem)
             conteudo.definir_texto_extraido(texto_extraido)
 
             self._gerar_resumo(conteudo, texto_extraido)
-            self._oferecer_modo_estudante(conteudo, texto_extraido)
+            self._aplicar_modo_estudante(conteudo, texto_extraido)
 
             self._conteudos.append(conteudo)
             self._salvar_dados()
@@ -354,9 +296,7 @@ class ModoEstudante:
             print("\n✅ Imagem processada e conteúdo salvo!")
             print(f"ID: {conteudo.id}")
 
-            # Gera PDF
             if self._perguntar_sim_nao("Deseja gerar um PDF?"):
-
                 caminho_pdf = self._exportar_pdf(conteudo)
 
                 print(f"\n📄 PDF gerado: {caminho_pdf}")
@@ -365,7 +305,6 @@ class ModoEstudante:
             print(f"\n❌ Erro durante o processamento: {erro}")
 
     def visualizar_conteudos(self):
-        """Lista todos os conteúdos salvos, numerados na ordem em que aparecem."""
         if not self._conteudos:
             print("\n⚠️ Nenhum conteúdo salvo.")
             return
@@ -379,9 +318,6 @@ class ModoEstudante:
             conteudo.exibir()
 
     def buscar_conteudo(self):
-        """Pede um termo e mostra os conteúdos que o têm no texto, no texto
-        extraído ou no resumo. A busca ignora maiúsculas e acentos.
-        """
         if not self._conteudos:
             print("\n⚠️ Nenhum conteúdo salvo.")
             return
@@ -412,9 +348,7 @@ class ModoEstudante:
             conteudo.exibir()
 
     def editar_conteudo(self):
-        """Pede um id e um novo texto, atualiza o conteúdo e refaz o resumo. Se já
-        existir PDF desse conteúdo, avisa que é preciso gerá-lo de novo.
-        """
+        """Troca o texto do conteúdo e refaz o resumo."""
         conteudo = self._selecionar_conteudo()
 
         if conteudo is None:
@@ -431,6 +365,7 @@ class ModoEstudante:
         conteudo.editar(novo_texto)
 
         self._gerar_resumo(conteudo, novo_texto)
+
         self._salvar_dados()
 
         print("\n✅ Conteúdo editado com sucesso!")
@@ -439,9 +374,6 @@ class ModoEstudante:
             print("ℹ️ Gere o PDF novamente (opção 7) para atualizar o arquivo.")
 
     def remover_conteudo(self):
-        """Pede um id e, depois da confirmação, apaga o conteúdo e também os PDFs
-        gerados a partir dele.
-        """
         conteudo = self._selecionar_conteudo()
 
         if conteudo is None:
@@ -451,6 +383,7 @@ class ModoEstudante:
             print("\nOperação cancelada.")
             return
 
+        # Apaga também os PDFs gerados a partir desse conteúdo
         for pdf in self._pdfs_do_conteudo(conteudo):
 
             try:
@@ -470,9 +403,6 @@ class ModoEstudante:
         print("\n🗑️ Conteúdo removido com sucesso!")
 
     def gerar_pdf_conteudo(self):
-        """Pede um id e gera o PDF desse conteúdo, mostrando onde o arquivo foi
-        salvo.
-        """
         conteudo = self._selecionar_conteudo()
 
         if conteudo is None:
@@ -481,7 +411,7 @@ class ModoEstudante:
         try:
             caminho = self._exportar_pdf(conteudo)
 
-        except (OSError, ValueError) as erro:
+        except (OSError, ValueError, RuntimeError) as erro:
             print(f"\n❌ Erro ao gerar o PDF: {erro}")
             return
 
@@ -489,7 +419,6 @@ class ModoEstudante:
         print(f"📄 Arquivo: {caminho}")
 
     def visualizar_pdfs(self):
-        """Lista os PDFs gerados, numerados, com o caminho e a origem de cada um."""
         if not self._pdfs:
             print("\n⚠️ Nenhum PDF gerado.")
             return
@@ -497,13 +426,24 @@ class ModoEstudante:
         print("\n===== PDFs GERADOS =====")
 
         for indice, pdf in enumerate(self._pdfs, start=1):
-
             print(f"\n{indice} - ")
-
             pdf.exibir()
 
+    def visualizar_modo_estudante(self):
+        ativos = [
+            conteudo for conteudo in self._conteudos if conteudo.modo_estudante
+        ]
+
+        if not ativos:
+            print("\n⚠️ Nenhum conteúdo no Modo Estudante.")
+            return
+
+        print(f"\n===== MODO ESTUDANTE ({len(ativos)}) =====")
+
+        for conteudo in ativos:
+            conteudo.exibir()
+
     def sobre_projeto(self):
-        """Mostra uma explicação curta do projeto e das tecnologias usadas."""
         print("\n===== SOBRE O PROJETO =====")
 
         print(
@@ -517,6 +457,11 @@ class ModoEstudante:
         )
 
         print(
+            "Quando o conteúdo parece material de estudo, o Modo Estudante "
+            "ativa sozinho e o conteúdo fica separado na opção 9."
+        )
+
+        print(
             "Também permite organizar conteúdos, gerar PDFs "
             "e guarda tudo em JSON entre uma execução e outra."
         )
@@ -527,8 +472,8 @@ class ModoEstudante:
         )
 
     def executar(self):
-        """Roda o loop principal: mostra o menu, chama a ação escolhida e volta ao
-        menu. Só termina com a opção 0 ou com Ctrl+C / Ctrl+D.
+        """Loop principal: mostra o menu, chama a ação escolhida e volta ao
+        menu.
         """
         acoes = {
             "1": self.capturar_conteudo,
@@ -539,7 +484,8 @@ class ModoEstudante:
             "6": self.solicitar_imagem,
             "7": self.gerar_pdf_conteudo,
             "8": self.visualizar_pdfs,
-            "9": self.sobre_projeto,
+            "9": self.visualizar_modo_estudante,
+            "10": self.sobre_projeto,
         }
 
         try:
@@ -561,5 +507,4 @@ class ModoEstudante:
                 acao()
 
         except (KeyboardInterrupt, EOFError):
-            # Ctrl+C / Ctrl+D encerram o programa sem mostrar erro
             print("\n\n👋 Encerrando o programa...")

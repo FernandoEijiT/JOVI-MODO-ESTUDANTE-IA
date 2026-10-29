@@ -1,15 +1,11 @@
 import os
 
-
 class PDF:
-    """Registro de um PDF gerado: onde o arquivo está, de onde veio o conteúdo e
-    qual conteúdo o gerou.
+    """Registro de um PDF gerado: onde está o arquivo, de onde veio e qual
+    conteúdo o gerou.
     """
 
     def __init__(self, nome, origem, id_conteudo=None):
-        """Recebe o caminho do arquivo (nome), a origem (texto ou imagem usada) e,
-        se quiser, o id do conteúdo que gerou o PDF.
-        """
         self._nome = nome
         self._origem = origem
         self._id_conteudo = id_conteudo
@@ -27,9 +23,6 @@ class PDF:
         return self._id_conteudo
 
     def exibir(self):
-        """Imprime o caminho e a origem do PDF, avisando se o arquivo não está mais
-        no disco.
-        """
         print(f"PDF: {self._nome}")
         print(f"Origem: {self._origem}")
 
@@ -37,7 +30,6 @@ class PDF:
             print("⚠️ Arquivo não encontrado no disco.")
 
     def para_dicionario(self):
-        """Converte o registro em um dicionário para salvar no JSON."""
         return {
             "nome": self._nome,
             "origem": self._origem,
@@ -46,9 +38,6 @@ class PDF:
 
     @classmethod
     def de_dicionario(cls, dados):
-        """Recria o registro a partir do dicionário lido do JSON e devolve o objeto
-        PDF.
-        """
         return cls(
             str(dados["nome"]),
             str(dados["origem"]),

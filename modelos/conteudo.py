@@ -1,13 +1,9 @@
 class Conteudo:
-    """Guarda um conteúdo de estudo: o texto digitado ou o que foi lido de uma
-    imagem, mais o resumo e se o Modo Estudante está ativo.
+    """Um conteúdo de estudo: texto digitado ou lido de uma imagem, com resumo
+    e a marcação do Modo Estudante.
     """
 
     def __init__(self, id_conteudo, texto):
-        """Cria o conteúdo com um id e o texto inicial. Quando o conteúdo vem de
-        uma imagem, esse texto é o caminho do arquivo. Resumo e demais campos
-        começam vazios.
-        """
         self._id = id_conteudo
         self._texto = texto
         self._resumo = ""
@@ -41,45 +37,32 @@ class Conteudo:
 
     @property
     def texto_principal(self):
-        """Devolve o texto que de fato representa o conteúdo: o extraído da imagem,
-        se houver, ou o texto digitado.
+        """O texto que representa o conteúdo: o extraído da imagem ou o texto digitado.
         """
         return self._texto_extraido or self._texto
 
     def editar(self, novo_texto):
-        """Troca o texto do conteúdo por novo_texto (que já deve ter sido
-        validado). Se o conteúdo veio de uma imagem, quem muda é o texto
-        extraído pelo OCR; senão, o texto digitado.
-        """
         if self._texto_extraido:
             self._texto_extraido = novo_texto
         else:
             self._texto = novo_texto
 
     def definir_resumo(self, resumo):
-        """Guarda o resumo (str) do conteúdo."""
         self._resumo = resumo
 
     def definir_texto_extraido(self, texto):
-        """Guarda o texto (str) que o OCR leu da imagem."""
         self._texto_extraido = texto
 
     def definir_imagem(self, caminho):
-        """Guarda o caminho (str) da imagem de origem."""
         self._imagem = caminho
 
     def ativar_modo_estudante(self):
-        """Marca o conteúdo como Modo Estudante ativado."""
         self._modo_estudante = True
 
     def desativar_modo_estudante(self):
-        """Tira a marcação de Modo Estudante do conteúdo."""
         self._modo_estudante = False
 
     def exibir(self):
-        """Imprime no terminal os dados do conteúdo: id, texto, imagem e texto
-        extraído (quando houver), resumo e se o Modo Estudante está ativo.
-        """
         print(f"\nID: {self._id}")
         print(f"Conteúdo: {self._texto}")
 
@@ -97,9 +80,6 @@ class Conteudo:
             print("Modo Estudante: Não ativado")
 
     def para_dicionario(self):
-        """Transforma o conteúdo em um dicionário simples, pronto para ir para o
-        JSON.
-        """
         return {
             "id": self._id,
             "texto": self._texto,
@@ -111,9 +91,9 @@ class Conteudo:
 
     @classmethod
     def de_dicionario(cls, dados):
-        """Faz o caminho inverso de para_dicionario: recebe o dicionário lido do
-        JSON e devolve o objeto Conteudo. Se faltar algum campo obrigatório ou o
-        tipo estiver errado, levanta KeyError, TypeError ou ValueError.
+        """Recria o Conteudo a partir do dicionário lido do JSON. Levanta
+        KeyError, TypeError ou ValueError se faltar campo ou o tipo estiver
+        errado.
         """
         conteudo = cls(int(dados["id"]), str(dados["texto"]))
         conteudo.definir_resumo(str(dados.get("resumo", "")))

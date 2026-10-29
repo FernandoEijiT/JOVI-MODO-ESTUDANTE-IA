@@ -4,35 +4,30 @@ from configuracao import IDIOMA_OCR, OCR_SPACE_API_KEY
 from servicos.imagem import ServicoImagem
 
 class ServicoOCRSpace:
-    """OCR por API externa: envia a imagem para o OCR.space e recebe o texto
-    reconhecido.
-    """
+    """OCR por API externa: envia a imagem para o OCR.space e recebe o texto."""
 
     URL = "https://api.ocr.space/parse/image"
 
-    # Limite de tamanho do arquivo no plano gratuito (1 MB)
     LIMITE_BYTES = 1024 * 1024
 
+    MAX_REDUCOES = 15
+
     def __init__(self, chave_api=None, idioma=IDIOMA_OCR, engine=2):
-        """Cria o serviço. Chave da API, idioma e versão do motor de OCR são
-        opcionais; sem chave, usa a do arquivo .env.
-        """
         self._chave = (chave_api or OCR_SPACE_API_KEY or "").strip()
         self._idioma = idioma
         self._engine = engine
 
     @property
     def configurado(self):
-        """Devolve True se existe uma chave de API configurada."""
         return bool(self._chave)
 
     def _preparar_imagem(self, caminho):
-        """Converte a imagem para JPEG e vai diminuindo o tamanho até caber no
-        limite de 1 MB do plano gratuito. Devolve os bytes prontos para enviar.
+        """Converte para JPEG e vai diminuindo a imagem até caber em 1 MB.
+        Levanta RuntimeError se mesmo reduzida ela continuar grande demais.
         """
         imagem = ServicoImagem.carregar(caminho)
 
-        while True:
+        for _ in range(self.MAX_REDUCOES):
             _, buffer = cv2.imencode(
                 ".jpg",
                 imagem,
@@ -50,11 +45,11 @@ class ServicoOCRSpace:
                 interpolation=cv2.INTER_AREA
             )
 
-    def extrair_texto(self, caminho_imagem):
+        raise RuntimeError("Não foi possível reduzir a imagem para 1 MB.")
 
-        """Envia a imagem para a API e devolve o texto reconhecido, com as quebras
-        de linha padronizadas. Levanta RuntimeError se faltar a chave, se a
-        conexão falhar ou se a API retornar erro.
+    def extrair_texto(self, caminho_imagem):
+        """Envia a imagem para a API e devolve o texto reconhecido. Levanta
+        RuntimeError se faltar a chave, a conexão falhar ou a API der erro.
         """
         if not self.configurado:
             raise RuntimeError(
@@ -88,7 +83,6 @@ class ServicoOCRSpace:
             ) from None
 
         if dados.get("IsErroredOnProcessing"):
-
             mensagem = dados.get("ErrorMessage")
 
             if isinstance(mensagem, list):
@@ -105,5 +99,5 @@ class ServicoOCRSpace:
             for resultado in resultados
         )
 
-        # A API usa quebras de linha do Windows (\r\n); padroniza para \n
+        # A API devolve quebras do Windows (\r\n)
         return texto.replace("\r\n", "\n").replace("\r", "\n").strip()

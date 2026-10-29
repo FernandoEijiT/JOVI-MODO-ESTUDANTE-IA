@@ -5,18 +5,15 @@ from configuracao import IDIOMA_OCR
 from servicos.imagem import ServicoImagem
 
 class ServicoOCR:
-    """OCR local: lê o texto de imagens com o Tesseract instalado no computador."""
+    """OCR local: lê o texto das imagens com o Tesseract instalado no PC."""
 
-    # Locais onde o instalador do Tesseract costuma colocar o executável
+    # Local onde o executável costuma ficar
     CAMINHOS_WINDOWS = (
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
     )
 
     def __init__(self, idioma=IDIOMA_OCR):
-        """Cria o serviço com o idioma do OCR (por padrão, o IDIOMA_OCR) e já tenta
-        achar o Tesseract sozinho.
-        """
         self._idioma = idioma
         self._configurado = False
 
@@ -24,27 +21,18 @@ class ServicoOCR:
 
     @property
     def configurado(self):
-        """Devolve True se o Tesseract foi encontrado e está configurado."""
         return self._configurado
 
     def configurar(self, caminho_tesseract):
-        """Define o caminho do executável do Tesseract. Levanta FileNotFoundError
-        se o caminho não existir.
-        """
         if not os.path.exists(caminho_tesseract):
-            raise FileNotFoundError(
-                "O caminho do Tesseract não foi encontrado."
-            )
+            raise FileNotFoundError("O caminho do Tesseract não foi encontrado.")
 
         pytesseract.pytesseract.tesseract_cmd = caminho_tesseract
 
         self._configurado = True
 
     def _configurar_automaticamente(self):
-
-        """Procura o Tesseract na variável TESSERACT_CMD, no PATH e nas pastas onde
-        o instalador do Windows costuma colocá-lo.
-        """
+        # Procura em TESSERACT_CMD, no PATH e nas pastas padrão do Windows
         candidatos = [
             os.getenv("TESSERACT_CMD"),
             shutil.which("tesseract"),
@@ -52,23 +40,18 @@ class ServicoOCR:
         ]
 
         for caminho in candidatos:
-
             if caminho and os.path.exists(caminho):
                 self.configurar(caminho)
                 return
 
     def extrair_texto(self, caminho_imagem):
-
-        """Lê a imagem e devolve o texto reconhecido pelo Tesseract, sem espaços
-        nas pontas. Levanta RuntimeError se o Tesseract não estiver instalado.
+        """Devolve o texto reconhecido pelo Tesseract. Levanta RuntimeError se
+        ele não estiver instalado.
         """
         imagem = ServicoImagem.carregar(caminho_imagem)
 
         try:
-            texto = pytesseract.image_to_string(
-                imagem,
-                lang=self._idioma
-            )
+            texto = pytesseract.image_to_string(imagem, lang=self._idioma)
 
         except pytesseract.TesseractNotFoundError:
             raise RuntimeError(

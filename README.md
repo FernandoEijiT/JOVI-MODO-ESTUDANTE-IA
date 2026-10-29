@@ -2,19 +2,28 @@
 
 Aplicação de terminal em Python que ajuda estudantes a organizar conteúdos de estudo.
 Ela captura textos ou imagens, extrai o texto das imagens com OCR, gera resumos
-automáticos e exporta tudo em PDF.
+automáticos, separa o que é material de estudo e exporta tudo em PDF.
 
 ## Funcionalidades
 
 - Capturar conteúdo digitado ou o caminho de uma imagem
 - Melhorar a imagem com OpenCV (ruído, nitidez, contraste)
 - Extrair o texto da imagem com OCR: **API externa OCR.space** ou **Tesseract local**
-- Gerar resumo automático do conteúdo (modelo BART via Transformers)
-- Detectar se o texto parece um documento (título, capítulo, introdução, conclusão...)
+- Gerar resumo automático em português (modelo PTT5 via Transformers), com resumo simples por frases como alternativa leve
 - Listar, buscar (sem diferenciar maiúsculas/acentos), editar e remover conteúdos
 - Gerar PDF com título, resumo e conteúdo original
-- **Persistência em JSON**: conteúdos e PDFs gerados ficam salvos em `arquivos/dados/conteudos.json` e são recarregados na próxima execução
-- Logo após capturar um texto ou processar uma imagem, o programa pergunta se deseja ativar o **Modo Estudante** (insiste até receber sim/não válido); se o conteúdo parecer um documento (título, capítulo, introdução, resumo, conclusão, referência), um aviso é exibido antes da pergunta
+- **Persistência em JSON**: conteúdos e PDFs ficam salvos em `arquivos/dados/conteudos.json` e são recarregados na próxima execução
+
+### Modo Estudante
+
+Ao capturar um texto ou processar uma imagem, o programa verifica se o conteúdo parece
+material de estudo ou um documento (título, capítulo, introdução, resumo, conclusão,
+referência, aula, prova, exercício, conceito, teorema...).
+
+- **Se parecer, o Modo Estudante é ativado automaticamente.**
+- Se não parecer, o programa pergunta se você quer ativar.
+
+O conteúdo fica marcado e pode ser consultado separado dos demais na opção **9 - Ver conteúdos do Modo Estudante**.
 
 ## API externa utilizada
 
@@ -35,16 +44,16 @@ JOVI-MODO-ESTUDANTE-IA/
 ├── requirements.txt        # dependências Python
 ├── .env.example            # modelo do arquivo .env (chave da API)
 ├── modelos/                # classes que representam os dados
-│   ├── conteudo.py         # Conteudo (texto, resumo, imagem, modo estudante)
+│   ├── conteudo.py         # Conteudo (texto, resumo, imagem, Modo Estudante)
 │   └── pdf.py              # PDF (nome e origem do arquivo gerado)
 ├── servicos/               # regras e integrações com bibliotecas
 │   ├── armazenamento.py    # persistência em JSON (salvar/carregar)
 │   ├── captura.py          # validação da entrada e normalização de texto
-│   ├── documento.py        # detecção de documentos por palavras-chave
+│   ├── documento.py        # detecção de documentos/material de estudo por palavras-chave
 │   ├── imagem.py           # leitura, gravação e melhoria de imagens (OpenCV)
 │   ├── ocr.py              # OCR local (Tesseract)
 │   ├── ocr_space.py        # OCR por API externa (OCR.space)
-│   ├── resumo.py           # geração de resumos (Transformers)
+│   ├── resumo.py           # geração de resumos (Transformers + resumo simples)
 │   └── pdf.py              # geração de PDFs (ReportLab)
 ├── sistema/
 │   └── modo_estudante.py   # menu e fluxo principal da aplicação
@@ -95,8 +104,19 @@ No arquivo `.env`, a variável `JOVI_OCR` define qual OCR usar:
 | `ocrspace`   | API OCR.space (padrão); se falhar, usa o Tesseract local             |
 | `tesseract`  | Somente o Tesseract local, sem internet e sem chave de API           |
 
-Na primeira vez que um resumo for gerado, o modelo é baixado da internet
-(algumas centenas de MB) e isso pode demorar. Depois fica salvo no computador.
+### Escolhendo o resumo
+
+A variável `JOVI_RESUMO` define como o resumo é gerado:
+
+| Valor           | Comportamento                                                                 |
+|-----------------|-------------------------------------------------------------------------------|
+| `transformers`  | Modelo de IA em português (padrão); se não carregar, usa o resumo simples      |
+| `simples`       | Escolhe as frases mais importantes do texto, sem baixar nada                  |
+
+Na primeira vez que um resumo for gerado com `transformers`, o modelo
+(`recogna-nlp/ptt5-base-summ`, cerca de 900 MB) é baixado da internet e isso pode
+demorar. Depois fica salvo no computador. Textos com menos de 30 palavras não são
+resumidos.
 
 ## Persistência de dados
 
@@ -107,9 +127,8 @@ inicia vazio, sem travar.
 
 ## Configurações opcionais
 
-- `JOVI_MODELO_RESUMO`: troca o modelo de resumo (padrão: `facebook/bart-large-cnn`).
-  O modelo padrão foi treinado em inglês, então os resumos de textos em português
-  podem ter qualidade limitada.
+- `JOVI_MODELO_RESUMO`: troca o modelo de resumo (padrão: `recogna-nlp/ptt5-base-summ`).
+- `JOVI_TOKENIZADOR_RESUMO`: tokenizador do modelo, se for diferente do próprio modelo.
 - `TESSERACT_CMD`: caminho completo do executável do Tesseract, se ele estiver
   instalado em outro local.
 

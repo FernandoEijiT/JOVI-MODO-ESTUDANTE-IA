@@ -1,24 +1,16 @@
 import json
 import os
-
 from configuracao import ARQUIVO_DADOS
 from modelos.conteudo import Conteudo
 from modelos.pdf import PDF
 
-
 class ServicoArmazenamento:
-    """Salva e carrega os conteúdos e os PDFs em um arquivo JSON, para que nada se
-    perca quando o programa é fechado.
-    """
+    """Salva e carrega os conteúdos e PDFs em um arquivo JSON."""
 
     @staticmethod
     def salvar(conteudos, pdfs, caminho=ARQUIVO_DADOS):
-        """Grava as listas de conteúdos e de PDFs no arquivo JSON (por padrão, o
-        ARQUIVO_DADOS).
-
-        A escrita é feita primeiro em um arquivo temporário e só depois ele
-        substitui o definitivo, assim uma falha no meio da gravação não estraga
-        os dados antigos. Levanta RuntimeError se não for possível gravar.
+        """Grava as listas no JSON. Escreve primeiro num arquivo temporário e só
+        depois troca pelo definitivo. Levanta RuntimeError se não conseguir gravar.
         """
         dados = {
             "conteudos": [conteudo.para_dicionario() for conteudo in conteudos],
@@ -43,11 +35,8 @@ class ServicoArmazenamento:
 
     @staticmethod
     def carregar(caminho=ARQUIVO_DADOS):
-        """Lê o JSON e devolve duas listas: os conteúdos e os PDFs. Na primeira
-        execução, quando o arquivo ainda não existe, devolve duas listas vazias.
-
-        Se o arquivo estiver quebrado, ele é renomeado para .corrompido (fica
-        como backup) e o método levanta ValueError. Levanta RuntimeError se o
+        """Lê o JSON e devolve a lista de conteúdos e a de PDFs. Se o arquivo estiver quebrado, ele é renomeado para
+        .corrompido e o método levanta ValueError. Levanta RuntimeError se o
         arquivo não puder ser lido.
         """
         caminho = os.fspath(caminho)
